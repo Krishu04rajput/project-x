@@ -1,171 +1,101 @@
-// ================= SCENE =================
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160/build/three.module.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.160/examples/jsm/loaders/GLTFLoader.js";
+
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x050505, 12, 65);
+scene.background = new THREE.Color(0x000000);
+scene.fog = new THREE.Fog(0x000000, 10, 80);
 
-// ================= CAMERA =================
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
-camera.position.set(0, 1.7, 15);
+camera.position.set(0, 1.6, 6);
 
-// ================= RENDERER =================
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
-renderer.setClearColor(0x000000);
+renderer.setPixelRatio(devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
-// ================= LIGHTING (DIM MODE) =================
+// 🔦 LIGHTS
+scene.add(new THREE.AmbientLight(0x404040, 0.6));
 
-// VERY soft ambient (side visibility)
-scene.add(new THREE.AmbientLight(0x404860, 0.35));
-
-// Hemisphere light = subtle side glow
-const hemi = new THREE.HemisphereLight(
-  0x606880,  // sky
-  0x101010,  // ground
-  0.45
-);
-scene.add(hemi);
-
-// Moon light (weak)
-const moon = new THREE.DirectionalLight(0x8899aa, 0.25);
-moon.position.set(15, 25, 10);
+const moon = new THREE.DirectionalLight(0x99bbff, 0.8);
+moon.position.set(5, 15, 5);
 scene.add(moon);
 
-// ================= FLOOR =================
-const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(200, 200),
-  new THREE.MeshStandardMaterial({ color: 0x2a2a2a })
+// 🌍 GROUND
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(300, 300),
+  new THREE.MeshStandardMaterial({ color: 0x0d0d0d })
 );
-floor.rotation.x = -Math.PI / 2;
-scene.add(floor);
+ground.rotation.x = -Math.PI / 2;
+scene.add(ground);
 
-// ================= WALLS =================
-const wallMat = new THREE.MeshStandardMaterial({ color: 0x151515 });
-for (let i = -30; i <= 30; i += 10) {
-  const wall = new THREE.Mesh(new THREE.BoxGeometry(3, 5, 20), wallMat);
-  wall.position.set(i, 2.5, -25);
-  scene.add(wall);
-}
+// 📦 LOADER
+const loader = new GLTFLoader();
 
-// ================= FLASHLIGHT =================
-const flashlight = new THREE.SpotLight(0xffffff, 4.5, 35, Math.PI / 6, 0.6);
-camera.add(flashlight);
+// ===== ASSETS =====
 
-const flashlightTarget = new THREE.Object3D();
-flashlightTarget.position.set(0, 0, -1);
-camera.add(flashlightTarget);
-flashlight.target = flashlightTarget;
-
-scene.add(camera);
-let flashlightOn = true;
-
-// ================= CONTROLS =================
-const keys = {};
-addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
-
-document.body.addEventListener("click", () => document.body.requestPointerLock());
-
-// Mouse look
-let yaw = 0, pitch = 0;
-addEventListener("mousemove", e => {
-  if (document.pointerLockElement === document.body) {
-    yaw -= e.movementX * 0.002;
-    pitch -= e.movementY * 0.002;
-    pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch));
-    camera.rotation.set(pitch, yaw, 0);
+// 🚗 ABANDONED CAR
+loader.load(
+  "https://drive.google.com/uc?export=download&id=1lfeR5Kvy6W8hrkCPrXSJxic5wi7_8pRr",
+  g => {
+    const car = g.scene;
+    car.position.set(8, 0, -12);
+    car.scale.set(1.2, 1.2, 1.2);
+    scene.add(car);
   }
-});
-
-// ================= SANITY =================
-let sanity = 100;
-const sanityUI = document.getElementById("sanity");
-
-function updateSanity() {
-  sanity -= flashlightOn ? 0.008 : 0.04;
-  sanity = Math.max(0, sanity);
-  sanityUI.textContent = "SANITY: " + Math.floor(sanity);
-
-  if (sanity < 40) {
-    camera.rotation.z = Math.sin(Date.now() * 0.002) * 0.03;
-  }
-}
-
-// ================= MONSTER =================
-const monster = new THREE.Mesh(
-  new THREE.BoxGeometry(1.5, 3, 1.5),
-  new THREE.MeshStandardMaterial({ color: 0x660000 })
 );
-monster.position.set(0, 1.5, -45);
-scene.add(monster);
 
-function monsterAI() {
-  const d = monster.position.distanceTo(camera.position);
-  if (sanity < 65 && d > 3) {
-    monster.position.lerp(camera.position, 0.002);
+// 🧟 BOSS
+let boss;
+loader.load(
+  "https://drive.google.com/uc?export=download&id=1mhqqAdJe69ZKpJ6A5HVzCQZOboYP1hP7",
+  g => {
+    boss = g.scene;
+    boss.position.set(0, 0, -30);
+    boss.scale.set(1.6, 1.6, 1.6);
+    scene.add(boss);
   }
-  if (d < 2) endGame();
-}
-
-// ================= DOOR =================
-const door = new THREE.Mesh(
-  new THREE.BoxGeometry(2, 4, 0.3),
-  new THREE.MeshStandardMaterial({ color: 0x553300 })
 );
-door.position.set(5, 2, -10);
-scene.add(door);
 
-// ================= NOTE =================
-const note = new THREE.Mesh(
-  new THREE.PlaneGeometry(2, 1),
-  new THREE.MeshStandardMaterial({ color: 0xbbbbbb })
+// 🪑 BLOODY CHAIR (ENV STORY)
+loader.load(
+  "https://drive.google.com/uc?export=download&id=1rbQkUzzYflaVjpC-1m6IalQXz_ICEqIp",
+  g => {
+    const chair = g.scene;
+    chair.position.set(-6, 0, -8);
+    scene.add(chair);
+  }
 );
-note.position.set(-5, 2, -10);
-scene.add(note);
 
-// ================= INTERACT =================
-addEventListener("keydown", e => {
-  if (e.key === "e") {
-    if (camera.position.distanceTo(door.position) < 3) {
-      door.rotation.y = Math.PI / 2;
-    }
-    if (camera.position.distanceTo(note.position) < 3) {
-      alert("NOTE: You never escaped this place.");
-      sanity -= 20;
-    }
+// 🚪 DOOR (PUZZLE)
+loader.load(
+  "https://drive.google.com/uc?export=download&id=1-PNoDQeNULzriAlXYy6sf7hasfxz8At0",
+  g => {
+    const door = g.scene;
+    door.position.set(0, 0, -5);
+    scene.add(door);
   }
+);
 
-  if (e.key === "f") {
-    flashlightOn = !flashlightOn;
-    flashlight.visible = flashlightOn;
+// 💡 LAMP
+loader.load(
+  "https://drive.google.com/uc?export=download&id=1zIlHrCaIA_xitzNJBDZyzNLbqva9cvH-",
+  g => {
+    const lamp = g.scene;
+    lamp.position.set(3, 0, -6);
+    scene.add(lamp);
   }
-});
+);
 
-// ================= END =================
-function endGame() {
-  alert("IT WAS STANDING RIGHT BEHIND YOU.");
-  location.reload();
-}
-
-// ================= LOOP =================
+// 🎥 GAME LOOP
 function animate() {
   requestAnimationFrame(animate);
 
-  const speed = 0.1;
-  if (keys.w) camera.translateZ(-speed);
-  if (keys.s) camera.translateZ(speed);
-  if (keys.a) camera.translateX(-speed);
-  if (keys.d) camera.translateX(speed);
-
-  updateSanity();
-  monsterAI();
+  // Simple boss idle movement (for now)
+  if (boss) {
+    boss.rotation.y += 0.003;
+  }
 
   renderer.render(scene, camera);
 }
-animate();
 
-// ================= RESIZE =================
-addEventListener("resize", () => {
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
+animate();
