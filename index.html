@@ -2,23 +2,161 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Project X</title>
+  <title>Project X – Web Game</title>
   <style>
-    body { margin: 0; overflow: hidden; background: black; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: black;
+      font-family: monospace;
+    }
     #ui {
       position: fixed;
       top: 10px;
       left: 10px;
       color: white;
-      font-family: monospace;
+      font-size: 18px;
       z-index: 10;
     }
   </style>
 </head>
 <body>
+  <div id="ui">HP: <span id="hp">100</span></div>
 
-<div id="ui">HP: <span id="hp">100</span></div>
+  <!-- THREE.JS -->
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.158.0/examples/js/controls/PointerLockControls.js"></script>
 
-<script type="module" src="./main.js"></script>
+  <script>
+    /* =========================
+       BASIC SETUP
+    ========================= */
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.Fog(0x000000, 5, 40);
+
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    /* =========================
+       LIGHTING
+    ========================= */
+    const ambient = new THREE.AmbientLight(0xffffff, 0.3);
+    scene.add(ambient);
+
+    const dir = new THREE.DirectionalLight(0xffffff, 1);
+    dir.position.set(5, 10, 5);
+    scene.add(dir);
+
+    /* =========================
+       FLOOR
+    ========================= */
+    const floorGeo = new THREE.PlaneGeometry(200, 200);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
+    const floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    /* =========================
+       PLAYER CONTROLS
+    ========================= */
+    const controls = new THREE.PointerLockControls(camera, document.body);
+    camera.position.set(0, 1.7, 5);
+
+    document.body.addEventListener("click", () => {
+      controls.lock();
+    });
+
+    scene.add(controls.getObject());
+
+    const keys = {};
+    document.addEventListener("keydown", e => keys[e.code] = true);
+    document.addEventListener("keyup", e => keys[e.code] = false);
+
+    /* =========================
+       PLAYER DATA
+    ========================= */
+    let hp = 100;
+    const hpUI = document.getElementById("hp");
+
+    /* =========================
+       BOSS (TEMP BOX)
+    ========================= */
+    const bossGeo = new THREE.BoxGeometry(2, 3, 2);
+    const bossMat = new THREE.MeshStandardMaterial({ color: 0x8b0000 });
+    const boss = new THREE.Mesh(bossGeo, bossMat);
+    boss.position.set(0, 1.5, -10);
+    scene.add(boss);
+
+    let bossHP = 300;
+
+    /* =========================
+       SIMPLE SWORD ATTACK
+    ========================= */
+    document.addEventListener("mousedown", () => {
+      const distance = camera.position.distanceTo(boss.position);
+      if (distance < 4) {
+        bossHP -= 20;
+        boss.material.color.set(0xff0000);
+        setTimeout(() => {
+          boss.material.color.set(0x8b0000);
+        }, 100);
+
+        if (bossHP <= 0) {
+          scene.remove(boss);
+        }
+      }
+    });
+
+    /* =========================
+       GAME LOOP
+    ========================= */
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const delta = clock.getDelta();
+
+      const speed = 6 * delta;
+
+      if (keys["KeyW"]) controls.moveForward(speed);
+      if (keys["KeyS"]) controls.moveForward(-speed);
+      if (keys["KeyA"]) controls.moveRight(-speed);
+      if (keys["KeyD"]) controls.moveRight(speed);
+
+      // Boss follows player
+      if (boss.parent) {
+        boss.lookAt(camera.position);
+        boss.position.z += 0.01;
+
+        const dist = camera.position.distanceTo(boss.position);
+        if (dist < 2) {
+          hp -= 0.2;
+          hpUI.textContent = Math.max(0, Math.floor(hp));
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    /* =========================
+       RESIZE FIX
+    ========================= */
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
 </body>
 </html>
